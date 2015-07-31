@@ -15,6 +15,12 @@
 #include "threadOperations.h"
 #include "ThreadPool.h"
 
+struct intCouple
+{
+    long int i1;
+    long int i2;
+};
+
 
 
 const double epsilon=0.0000000001;
@@ -59,19 +65,20 @@ public:
     //default ctor: create empty matrix (use resize to set a new size and allocate the image container)
     C_matrix();
     //ctor: create mtrix of size _L rows, _C columns
-    C_matrix(long int _L, long int _C);
+    //C_matrix(long int _L, long int _C);
+    C_matrix(long int _L, long int _C, ThreadPool* _myThread=NULL, long int _NB_JOB=1);
     //copy ctor
     C_matrix(const C_matrix &M);
     C_matrix(C_matrix &M);
     //ctor: create a matrix copying _M
-    C_matrix(dataType **_M, long int _L, long int _C);
+    C_matrix(dataType **_M, long int _L, long int _C, ThreadPool* _myThread=NULL, long int _NB_JOB=1);
     //dtor: free memory
     virtual ~C_matrix();
     
     
     //multithreading
-    //ThreadPool* myThread;
-    //int NB_JOB;
+    ThreadPool* myThread;
+    int NB_JOB;
 
 
     //IO methods
@@ -106,7 +113,7 @@ public:
     C_matrix<dataType> operator- (C_matrix const& c);
     C_matrix<dataType> operator- (dataType const& x);
     C_matrix<dataType> operator* (C_matrix const& c);
-    C_matrix operator* (const dataType& x);
+    C_matrix<dataType> operator* (const dataType& x);
 
     C_matrix<dataType> operator== (C_matrix const& c);
     C_matrix<dataType> operator== (dataType const& x);
@@ -203,6 +210,14 @@ public:
     long int endC;
 
 protected:
+    long int sub2ind(long int l, long int c);
+    long int ind2row(long int idx);
+    long int ind2column(long int idx);
+    intCouple ind2Sub(long int idx);
+    long int threadIntervalStart(long int i);
+    long int threadIntervalEnd(long int i);
+    intCouple threadInterval(long int i);
+
     long int m_L;
     long int m_C;
     dataType** m_A;
@@ -222,7 +237,7 @@ template<class dataType> C_matrix<dataType>::C_matrix()
     endL = m_L-1;
     endC = m_C-1;
 }
-template<class dataType> C_matrix<dataType>::C_matrix(long int _L, long int _C) : m_L(_L),m_C(_C)
+template<class dataType> C_matrix<dataType>::C_matrix(long int _L, long int _C, ThreadPool* _myThread, long int _NB_JOB) : m_L(_L),m_C(_C),myThread(_myThread),NB_JOB(_NB_JOB)
 {
     m_A = allocate(m_L,m_C);
     if(m_A==NULL)
@@ -232,10 +247,9 @@ template<class dataType> C_matrix<dataType>::C_matrix(long int _L, long int _C) 
     }
     endL = m_L-1;
     endC = m_C-1;
-    *this = 0.0;
 }
 
-template<class dataType> C_matrix<dataType>::C_matrix(dataType **_M, long int _L, long int _C) : m_L(_L),m_C(_C)
+template<class dataType> C_matrix<dataType>::C_matrix(dataType **_M, long int _L, long int _C, ThreadPool* _myThread, long int _NB_JOB) : m_L(_L),m_C(_C),myThread(_myThread),NB_JOB(_NB_JOB)
 {
     m_A = allocate(m_L, m_C);
     if(m_A==NULL)
@@ -257,6 +271,8 @@ template<class dataType> C_matrix<dataType>::C_matrix(dataType **_M, long int _L
 
 template<class dataType> C_matrix<dataType>::C_matrix(const C_matrix &X)
 {
+    myThread = X.myThread;
+    NB_JOB = X.NB_JOB;
     m_L = X.getNbRow();
     m_C = X.getNbColumn();
     m_A = allocate(m_L, m_C);
@@ -285,6 +301,8 @@ template<class dataType> C_matrix<dataType>::C_matrix(const C_matrix &X)
 
 template<class dataType> C_matrix<dataType>::C_matrix(C_matrix &X)
 {
+    myThread = X.myThread;
+    NB_JOB = X.NB_JOB;
     m_L = X.getNbRow();
     m_C = X.getNbColumn();
     m_A = allocate(m_L, m_C);
@@ -421,25 +439,82 @@ template<class dataType> C_matrix<dataType> C_matrix<dataType>::operator= (C_mat
         //throw "dimension matrix must agree";
     }
 
-    for(long int i=0 ; i<this->m_L ; i++)
+    if(myThread!=NULL && NB_JOB>1)
     {
-        for(long int j=0 ; j<this->m_C ; j++)
+        double** output = this->m_A;
+        double** input = c.m_A;
+        intCouple idx;
+        long int _Nl=m_L, _Nc=m_C;
+        std::vector< std::future<void> > results;
+        for(int i = 0; i < NB_JOB; ++i) 
         {
-            this->m_A[i][j] = c(i,j);
+            //determine on which segment the operation will be run
+            idx = threadInterval(i);
+            //tell thread to work
+            results.emplace_back(
+                (*myThread).enqueue([idx, _Nl, _Nc, input, output] {//
+                    threadOperations tool;
+                    tool.assignMatrix(idx.i1, idx.i2, _Nl, _Nc, input, output);
+                    return;
+                })
+            );
+        }
+        for(auto && result: results)
+        {
+            result.get();
+        } 
+    }
+    else
+    {
+        for(long int i=0 ; i<this->m_L ; i++)
+        {
+            for(long int j=0 ; j<this->m_C ; j++)
+            {
+                this->m_A[i][j] = c(i,j);
+            }
         }
     }
+
+
+    
     return *this;
 }
 
 template<class dataType> C_matrix<dataType> C_matrix<dataType>::operator= (dataType const& x)
 {
-    for(long int i=0 ; i<this->m_L ; i++)
+    if(myThread!=NULL && NB_JOB>1)
     {
-        for(long int j=0 ; j<this->m_C ; j++)
+        double** output = this->m_A;
+        intCouple idx;
+        long int _Nl=m_L, _Nc=m_C;
+        std::vector< std::future<void> > results;
+        for(int i = 0; i < NB_JOB; ++i) 
         {
-            m_A[i][j] = x;
+            //determine on which segment the operation will be run
+            idx = threadInterval(i);
+            //tell thread to work
+            results.emplace_back(
+                (*myThread).enqueue([idx, _Nl, _Nc, x, output] {
+                    threadOperations tool;
+                    tool.assignMatrix(idx.i1, idx.i2, _Nl, _Nc, x, output);
+                    return;
+                })
+            );
+        }
+        for(auto && result: results) result.get();
+
+    }
+    else
+    {
+        for(long int i=0 ; i<this->m_L ; i++)
+        {
+            for(long int j=0 ; j<this->m_C ; j++)
+            {
+                m_A[i][j] = x;
+            }
         }
     }
+    
 
     return *this;
 }
@@ -450,27 +525,85 @@ template<class dataType> C_matrix<dataType> C_matrix<dataType>::operator= (dataT
 template<class dataType> C_matrix<dataType> C_matrix<dataType>::operator+ (C_matrix const& c)
 {
     if(c.getNbColumn()!=this->getNbColumn() || c.getNbRow()!=this->getNbRow()) throw "dimension matrix must agree";
-    C_matrix<dataType> B(m_L,m_C);
-    for(long int i=0 ; i<m_L ; i++)
+    C_matrix<dataType> B(m_L,m_C,myThread,NB_JOB);
+
+    if(myThread!=NULL && NB_JOB>1)
     {
-        for(long int j=0 ; j<m_C ; j++)
+        //must be multithreaded
+        double** input1 = this->m_A;
+        intCouple idx;
+        long int _Nl=m_L, _Nc=m_C;
+        double** output = B.m_A;
+        double** input2 = c.m_A;
+        std::vector< std::future<void> > results;
+        for(int i = 0; i < NB_JOB; ++i) 
         {
-            B(i,j) = m_A[i][j] + c(i,j);
+            //determine on which segment the operation will be run
+            idx = threadInterval(i);
+            //tell thread to work
+            results.emplace_back(
+                (*myThread).enqueue( [idx, _Nl, _Nc, input1, input2, output] {
+                    threadOperations tool;
+                    tool.addMatrix(idx.i1, idx.i2, _Nl, _Nc, input1, input2, output);
+                    return;
+                })
+            );
+        }
+        for(auto && result: results) result.get();
+    }
+    else
+    {
+        for(long int i=0 ; i<m_L ; i++)
+        {
+            for(long int j=0 ; j<m_C ; j++)
+            {
+                B(i,j) = m_A[i][j] + c(i,j);
+            }
         }
     }
+    
     return B;
 }
 
 template<class dataType> C_matrix<dataType> C_matrix<dataType>::operator+ (dataType const& x)
 {
-    C_matrix<dataType> B(m_L,m_C);
-    for(long int i=0 ; i<this->m_L ; i++)
+    C_matrix<dataType> B(m_L,m_C,myThread,NB_JOB);
+
+    if(myThread!=NULL && NB_JOB>1)
     {
-        for(long int j=0 ; j<this->m_C ; j++)
+        double** input = this->m_A;
+        double** output = B.m_A;
+        intCouple idx;
+        long int _Nl=m_L, _Nc=m_C;
+        std::vector< std::future<void> > results;
+        for(int i = 0; i < NB_JOB; ++i) 
         {
-            B(i,j) = m_A[i][j] + x;
+            //determine on which segment the operation will be run
+            idx = threadInterval(i);
+            //tell thread to work
+            results.emplace_back(
+                (*myThread).enqueue([idx, _Nl, _Nc, x, input, output] {
+                    threadOperations tool;
+                    tool.addMatrix(idx.i1, idx.i2, _Nl, _Nc, x, input, output);
+                    return;
+                })
+            );
+        }
+        for(auto && result: results) result.get();
+
+    }
+    else
+    {
+        for(long int i=0 ; i<this->m_L ; i++)
+        {
+            for(long int j=0 ; j<this->m_C ; j++)
+            {
+                B(i,j) = m_A[i][j] + x;
+            }
         }
     }
+
+    
 
     return B;
 }
@@ -478,29 +611,50 @@ template<class dataType> C_matrix<dataType> C_matrix<dataType>::operator+ (dataT
 template<class dataType> C_matrix<dataType> C_matrix<dataType>::operator- (C_matrix const& c)
 {
     if(c.getNbColumn()!=this->getNbColumn() || c.getNbRow()!=this->getNbRow()) throw "dimension matrix must agree";
-    C_matrix<dataType> B(m_L,m_C);// = new C_matrix(m_L,m_C);
-    for(long int i=0 ; i<m_L ; i++)
+    C_matrix<dataType> B(m_L,m_C,myThread,NB_JOB);
+
+    if(myThread!=NULL && NB_JOB>1)
     {
-        for(long int j=0 ; j<m_C ; j++)
+        //must be multithreaded
+        double** input1 = this->m_A;
+        intCouple idx;
+        long int _Nl=m_L, _Nc=m_C;
+        double** output = B.m_A;
+        double** input2 = c.m_A;
+        std::vector< std::future<void> > results;
+        for(int i = 0; i < NB_JOB; ++i) 
         {
-            B(i,j) = m_A[i][j] - c(i,j);
+            //determine on which segment the operation will be run
+            idx = threadInterval(i);
+            //tell thread to work
+            results.emplace_back(
+                (*myThread).enqueue( [idx, _Nl, _Nc, input1, input2, output] {
+                    threadOperations tool;
+                    tool.subMatrix(idx.i1, idx.i2, _Nl, _Nc, input1, input2, output);
+                    return;
+                })
+            );
+        }
+        for(auto && result: results) result.get();
+    }
+    else
+    {
+        for(long int i=0 ; i<m_L ; i++)
+        {
+            for(long int j=0 ; j<m_C ; j++)
+            {
+                B(i,j) = m_A[i][j] - c(i,j);
+            }
         }
     }
+    
     return B;
 }
 
 template<class dataType> C_matrix<dataType> C_matrix<dataType>::operator- (dataType const& x)
 {
-    C_matrix<dataType> B(m_L,m_C);// = new C_matrix
-    for(long int i=0 ; i<this->m_L ; i++)
-    {
-        for(long int j=0 ; j<this->m_C ; j++)
-        {
-            B(i,j) = m_A[i][j] - x;
-        }
-    }
-
-    return B;
+    dataType xx = -x;
+    return ((*this)+xx);
 }
 
 
@@ -2392,5 +2546,67 @@ template<class dataType> void C_matrix<dataType>::eigsrt(C_matrix<dataType> *d, 
         }
     }
 }
+
+// i = l + c*Nl;
+// c = (long int) floor( ((double) i)/((double) _Nl));
+// l = i - c*_Nl;
+template<class dataType> long int C_matrix<dataType>::sub2ind(long int l, long int c)
+{
+    return l + c*m_L;
+}
+template<class dataType> long int C_matrix<dataType>::ind2row(long int idx)
+{
+    long int c = (long int) floor( ((double) idx)/((double) m_L));
+    return idx - c*m_L;
+}
+template<class dataType> long int C_matrix<dataType>::ind2column(long int idx)
+{
+    return (long int) floor( ((double) idx)/((double) m_L));
+}
+template<class dataType> intCouple C_matrix<dataType>::ind2Sub(long int idx)
+{
+    intCouple I;
+    I.i2 = (long int) floor( ((double) idx)/((double) m_L));
+    I.i1 = idx - I.i2*m_L;
+    return I;
+}
+
+
+template<class dataType> long int C_matrix<dataType>::threadIntervalStart(long int i)
+{
+    if(i<1) return 0;
+    if(i>NB_JOB) return (m_L*m_C-1);//it's not a start, but an end
+    return (i*m_L*m_C)/NB_JOB;
+}
+template<class dataType> long int C_matrix<dataType>::threadIntervalEnd(long int i)
+{
+
+    if(i<0) return 0;
+    if(i>=NB_JOB) return (m_L*m_C-1);//it's not a start, but an end
+    return (((i+1)*m_L*m_C)/NB_JOB)-1;
+}
+template<class dataType> intCouple C_matrix<dataType>::threadInterval(long int i)
+{
+    intCouple I;
+    if(i<0)
+    {
+        I.i1 = 0;
+        I.i2 = 0;
+    }
+    else if(i>=NB_JOB)
+    {
+        I.i1 = m_L*m_C -1;
+        I.i2 = m_L*m_C -1;
+    }
+    else //i>=0 && i<NB_JOB
+    {
+        I.i1 = (i*m_L*m_C)/NB_JOB;
+        I.i2 = (((i+1)*m_L*m_C)/NB_JOB)-1;
+    }
+    if(I.i1>I.i2) std::cout << "somthing went wrong..." << std::endl;
+    return I;
+}
+
+
 #endif // C_MATRIX_H
 

@@ -53,3 +53,17 @@ void threadOperations::addMatrix(long int idxStart,long int idxEnd, long int _Nl
     }
     return ;
 }
+
+void threadOperations::subMatrix(long int idxStart,long int idxEnd, long int _Nl, long int _Nc, double** input1, double** input2, double** output)
+{
+    long int l, c;
+    if(idxEnd>=(_Nl*_Nc)) idxEnd=_Nl*_Nc-1;
+    for(long int i=idxStart ; i<=idxEnd ; i++)
+    {
+        //i = l + c*N;
+        c = (long int) floor( ((double) i)/((double) _Nl));
+        l = i - c*_Nl;
+        output[l][c] = input1[l][c] - input2[l][c];
+    }
+    return ;
+}
