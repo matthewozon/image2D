@@ -1,4 +1,50 @@
-//good to go!
+/*
+ #
+ #  File            : C_matrix.h
+ #                    ( C++ header file )
+ #
+ #  Description     : pas besoin
+ #
+ #  Project manager : moi
+ #
+ #  Licenses        : This file is 'dual-licensed', you have to choose one
+ #                    of the two licenses below to apply.
+ #
+ #                    CeCILL-C
+ #                    The CeCILL-C license is close to the GNU LGPL.
+ #                    ( http://www.cecill.info/licences/Licence_CeCILL-C_V1-en.html )
+ #
+ #                or  CeCILL v2.0
+ #                    The CeCILL license is compatible with the GNU GPL.
+ #                    ( http://www.cecill.info/licences/Licence_CeCILL_V2-en.html )
+ #
+ #  This software is governed either by the CeCILL or the CeCILL-C license
+ #  under French law and abiding by the rules of distribution of free software.
+ #  You can  use, modify and or redistribute the software under the terms of
+ #  the CeCILL or CeCILL-C licenses as circulated by CEA, CNRS and INRIA
+ #  at the following URL: "http://www.cecill.info".
+ #
+ #  As a counterpart to the access to the source code and  rights to copy,
+ #  modify and redistribute granted by the license, users are provided only
+ #  with a limited warranty  and the software's author,  the holder of the
+ #  economic rights,  and the successive licensors  have only  limited
+ #  liability.
+ #
+ #  In this respect, the user's attention is drawn to the risks associated
+ #  with loading,  using,  modifying and/or developing or reproducing the
+ #  software by the user in light of its specific status of free software,
+ #  that may mean  that it is complicated to manipulate,  and  that  also
+ #  therefore means  that it is reserved for developers  and  experienced
+ #  professionals having in-depth computer knowledge. Users are therefore
+ #  encouraged to load and test the software's suitability as regards their
+ #  requirements in conditions enabling the security of their systems and/or
+ #  data to be ensured and,  more generally, to use and operate it in the
+ #  same conditions as regards security.
+ #
+ #  The fact that you are presently reading this means that you have had
+ #  knowledge of the CeCILL and CeCILL-C licenses and that you accept its terms.
+ #
+*/
 
 #ifndef C_MATRIX_H
 #define C_MATRIX_H
@@ -6,21 +52,11 @@
 #include <stdlib.h>
 #include <iostream>
 #include <fstream>
+#include <C_vector.h>
 #include <cmath>
 #include <float.h>
 #include <cstring>
 #include <vector>
-
-//multi-threading
-#include "threadOperations.h"
-#include "ThreadPool.h"
-
-struct intCouple
-{
-    long int i1;
-    long int i2;
-};
-
 
 
 const double epsilon=0.0000000001;
@@ -34,11 +70,17 @@ const double epsilon=0.0000000001;
 #ifndef SIGN
 #define SIGN(a,b) ((b) >= 0.0 ? fabs(a) : -fabs(a))
 #endif
+#ifndef SIGN_
+#define SIGN_(a) ((a) >= 0.0 ? 1 : -1)
+#endif
 #ifndef MAX
 #define MAX(a,b) ((a) > (b) ? (a) : (b))
 #endif
 #ifndef MIN
 #define MIN(a,b) ((a) >= (b) ? (b) : (a))
+#endif
+#ifndef MINMOD
+#define MINMOD(a,b) (0.5*(SIGN_(a)+SIGN_(b))*MIN(ABS(a),ABS(b)))
 #endif
 #ifndef Pi
 #define Pi 3.141592653589793238462643383279502884197169399375105820974944592L
@@ -65,55 +107,47 @@ public:
     //default ctor: create empty matrix (use resize to set a new size and allocate the image container)
     C_matrix();
     //ctor: create mtrix of size _L rows, _C columns
-    //C_matrix(long int _L, long int _C);
-    C_matrix(long int _L, long int _C, ThreadPool* _myThread=NULL, long int _NB_JOB=1);
+    C_matrix(int _L, int _C);
     //copy ctor
     C_matrix(const C_matrix &M);
-    C_matrix(C_matrix &M);
     //ctor: create a matrix copying _M
-    C_matrix(dataType **_M, long int _L, long int _C, ThreadPool* _myThread=NULL, long int _NB_JOB=1);
+    C_matrix(dataType **_M, int _L, int _C);
     //dtor: free memory
     virtual ~C_matrix();
-    
-    
-    //multithreading
-    ThreadPool* myThread;
-    int NB_JOB;
+
+    int getIndex(int l, int c){return l*m_C+c;}//
+    int getRow(int idx){return idx/m_C;}//floor();
+    int getColumn(int idx){return idx%m_C;}// return idx - (floor(idx/m_C)*m_C);
 
 
     //IO methods
     dataType& operator()(const int l, const int c);
     const dataType& operator()(const int l, const int c) const;
-    
     dataType& operator()(const long l, const long c);
     const dataType& operator()(const long l, const long c) const;
-    
     dataType& operator()(const short l, const short c);
     const dataType& operator()(const short l, const short c) const;
-    
     dataType& operator()(const unsigned int l, const unsigned int c);
     const dataType& operator()(const unsigned int l, const unsigned int c) const;
-    
     dataType& operator()(const unsigned short l, const unsigned short c);
     const dataType& operator()(const unsigned short l, const unsigned short c) const;
-    
     dataType& operator()(const unsigned long l, const unsigned long c);
     const dataType& operator()(const unsigned long l, const unsigned long c) const;
-    
     dataType& operator()(const float l, const float c);
-    const dataType& operator()(const float l, const float c, long int INTERPOLATION=NEAREST) const;
+    const dataType& operator()(const float l, const float c, unsigned short INTERPOLATION=NEAREST) const;
     dataType& operator()(const double l, const double c);
-    const dataType& operator()(const double l, const double c, long int INTERPOLATION=NEAREST) const;
+    const dataType& operator()(const double l, const double c, unsigned short INTERPOLATION=NEAREST) const;
 
-    //overload operators (shall be multithreaded)
-    C_matrix<dataType> operator= (C_matrix const& c); //assignSquareMatrix
-    C_matrix<dataType> operator= (dataType const& x); //assignSquareMatrix
-    C_matrix<dataType> operator+ (C_matrix const& c); //addSquareMatrix
-    C_matrix<dataType> operator+ (dataType const& x); //addSquareMatrix
+    //overload operators
+    C_matrix<dataType> operator= (C_matrix const& c);
+    C_matrix<dataType> operator= (dataType const& x);
+    C_matrix<dataType> operator+ (C_matrix const& c);
+    C_matrix<dataType> operator+ (dataType const& x);
     C_matrix<dataType> operator- (C_matrix const& c);
     C_matrix<dataType> operator- (dataType const& x);
     C_matrix<dataType> operator* (C_matrix const& c);
-    C_matrix<dataType> operator* (const dataType& x);
+    //C_vector<dataType>& operator* (C_vector<dataType> const& c); //obselete
+    C_matrix operator* (const dataType& x);
 
     C_matrix<dataType> operator== (C_matrix const& c);
     C_matrix<dataType> operator== (dataType const& x);
@@ -183,9 +217,9 @@ public:
     //LU
     C_matrix<dataType> Transpose(void);
     C_matrix<dataType> LU(void);
-    C_matrix<dataType> LUP(C_matrix<int> &Indice);
+    C_matrix<dataType> LUP(C_vector<int> &Indice);
     C_matrix<dataType> LMU(void);
-    C_matrix<dataType> LineAlgEq_LU(C_matrix<dataType> &B);
+    C_vector<dataType> LineAlgEq_LU(C_vector<dataType> &B);
     //svd
     std::vector<C_matrix<dataType> > svd(void);
     //diagonalisation: sym sys
@@ -199,32 +233,29 @@ public:
 
 
     //other tools
-    long int getNbRow(void)const {return m_L;}
-    long int getNbColumn(void)const {return m_C;}
+    int getNbRow(void)const {return m_L;}
+    int getNbColumn(void)const {return m_C;}
+    int numel(void)const{return m_L*m_C;}
     void show(void);
     void save(std::string fileName);
 
+//    int getIndex(int l, int c){return l*m_C+c;}
+//    int getRow(int idx){return idx/m_C;}//floor();
+//    int getColumn(int idx){return idx%m_C;}// return idx - (floor(idx/m_C)*m_C);
+
     //to use carefully
-    bool resize(long int newL, long int newC);
-    long int endL;
-    long int endC;
+    bool resize(int newL, int newC);
+    int endL;
+    int endC;
 
 protected:
-    long int sub2ind(long int l, long int c);
-    long int ind2row(long int idx);
-    long int ind2column(long int idx);
-    intCouple ind2Sub(long int idx);
-    long int threadIntervalStart(long int i);
-    long int threadIntervalEnd(long int i);
-    intCouple threadInterval(long int i);
-
-    long int m_L;
-    long int m_C;
-    dataType** m_A;
+    int m_L;
+    int m_C;
+    dataType* m_A;
 
     //privates tools to allocate and free memory
-    dataType** allocate(long int M, long int N);
-    void deallocation(dataType** B, long int M, long int N);
+    dataType *allocate(int M, int N);
+    void deallocation(dataType* B, int M, int N);
 
     double pythag(const double a, const double b);
 
@@ -237,7 +268,7 @@ template<class dataType> C_matrix<dataType>::C_matrix()
     endL = m_L-1;
     endC = m_C-1;
 }
-template<class dataType> C_matrix<dataType>::C_matrix(long int _L, long int _C, ThreadPool* _myThread, long int _NB_JOB) : m_L(_L),m_C(_C),myThread(_myThread),NB_JOB(_NB_JOB)
+template<class dataType> C_matrix<dataType>::C_matrix(int _L, int _C) : m_L(_L),m_C(_C)
 {
     m_A = allocate(m_L,m_C);
     if(m_A==NULL)
@@ -247,9 +278,10 @@ template<class dataType> C_matrix<dataType>::C_matrix(long int _L, long int _C, 
     }
     endL = m_L-1;
     endC = m_C-1;
+    *this = 0.0;
 }
 
-template<class dataType> C_matrix<dataType>::C_matrix(dataType **_M, long int _L, long int _C, ThreadPool* _myThread, long int _NB_JOB) : m_L(_L),m_C(_C),myThread(_myThread),NB_JOB(_NB_JOB)
+template<class dataType> C_matrix<dataType>::C_matrix(dataType **_M, int _L, int _C) : m_L(_L),m_C(_C)
 {
     m_A = allocate(m_L, m_C);
     if(m_A==NULL)
@@ -259,10 +291,10 @@ template<class dataType> C_matrix<dataType>::C_matrix(dataType **_M, long int _L
     }
     else
     {
-        for(long int i=0 ; i<m_L ; i++)
+        for(int i=0 ; i<m_L ; i++)
         {
-            for(long int j=0 ; j<m_C ; j++)
-                m_A[i][j] = _M[i][j];
+            for(int j=0 ; j<m_C ; j++)
+                m_A[getIndex(i,j)] = _M[i][j];
         }
     }
     endL = m_L-1;
@@ -271,8 +303,6 @@ template<class dataType> C_matrix<dataType>::C_matrix(dataType **_M, long int _L
 
 template<class dataType> C_matrix<dataType>::C_matrix(const C_matrix &X)
 {
-    myThread = X.myThread;
-    NB_JOB = X.NB_JOB;
     m_L = X.getNbRow();
     m_C = X.getNbColumn();
     m_A = allocate(m_L, m_C);
@@ -283,41 +313,11 @@ template<class dataType> C_matrix<dataType>::C_matrix(const C_matrix &X)
     }
     else
     {
-        for(long int i=0 ; i<m_L ; i++)
+        for(int i=0 ; i<m_L ; i++)
         {
-            for(long int j=0 ; j<m_C ; j++)
+            for(int j=0 ; j<m_C ; j++)
             {
-                m_A[i][j] = X(i,j);
-            }
-        }
-    }
-    endL = m_L-1;
-    endC = m_C-1;
-
-    offsetL = X.offsetL;
-    offsetC = X.offsetC;
-
-}
-
-template<class dataType> C_matrix<dataType>::C_matrix(C_matrix &X)
-{
-    myThread = X.myThread;
-    NB_JOB = X.NB_JOB;
-    m_L = X.getNbRow();
-    m_C = X.getNbColumn();
-    m_A = allocate(m_L, m_C);
-    if(m_A==NULL)
-    {
-        m_L=0;
-        m_C=0;
-    }
-    else
-    {
-        for(long int i=0 ; i<m_L ; i++)
-        {
-            for(long int j=0 ; j<m_C ; j++)
-            {
-                m_A[i][j] = X(i,j);
+                m_A[getIndex(i,j)] = X(i,j);
             }
         }
     }
@@ -335,7 +335,7 @@ template<class dataType> C_matrix<dataType>::~C_matrix()
 }
 
 //to use carefully
-template<class dataType> bool C_matrix<dataType>::resize(long int newL, long int newC)
+template<class dataType> bool C_matrix<dataType>::resize(int newL, int newC)
 {
     deallocation(m_A,m_L,m_C);
     m_A = NULL;
@@ -351,56 +351,30 @@ template<class dataType> bool C_matrix<dataType>::resize(long int newL, long int
     return true;
 }
 
-template<class dataType> dataType** C_matrix<dataType>::allocate(long int M, long int N)
+template<class dataType> dataType* C_matrix<dataType>::allocate(int M, int N)
 {
-    dataType** A = new dataType*[M];
-    if(A==NULL) return A;
-
-    for(long int i=0 ; i<M ; i++)
-        A[i] = new dataType[N];
-
-    //should check if all allocation is OK
-    bool cond=true;
-    for(long int i=0 ; i<M ; i++)
-    {
-        if(A[i]==NULL)
-        {
-            cond=false;
-            i=M;
-        }
-    }
-    if(!cond)
-    {
-        deallocation(A,M,N);
-    }
-    return A;
+    return new dataType[M*N];
 }
 
-template<class dataType> void C_matrix<dataType>::deallocation(dataType** B, long int M, long int N)
+template<class dataType> void C_matrix<dataType>::deallocation(dataType *B, int M, int N)
 {
     if(B!=NULL)
     {
-        for(long int i=0 ; i<M ; i++)
-        {
-            if(B[i]!=NULL)
-            {
-                delete [] B[i];
-            }
-        }
         delete [] B;
         B=NULL;
     }
     return;
 }
 
+
 template<class dataType> void C_matrix<dataType>::show(void)
 {
     std::cout << "--------------------------------------------------------" << std::endl;
-    for(long int i=0 ; i<m_L ; i++)
+    for(unsigned short i=0 ; i<m_L ; i++)
     {
-        for(long int j=0 ; j<m_C ; j++)
+        for(unsigned short j=0 ; j<m_C ; j++)
         {
-            std::cout << m_A[i][j] << "\t";
+            std::cout << m_A[getIndex(i,j)] << "\t";
         }
         std::cout << std::endl;
     }
@@ -415,11 +389,11 @@ template<class dataType> void C_matrix<dataType>::save(std::string fileName)
 
     if(myfileX.is_open())
     {
-        for(long int i=0 ; i<m_L ; i++)
+        for(unsigned short i=0 ; i<m_L ; i++)
         {
-            for(long int j=0 ; j<m_C ; j++)
+            for(unsigned short j=0 ; j<m_C ; j++)
             {
-                myfileX << m_A[i][j] << "\t";
+                myfileX << m_A[getIndex(i,j)] << "\t";
             }
             myfileX << std::endl;
         }
@@ -439,82 +413,25 @@ template<class dataType> C_matrix<dataType> C_matrix<dataType>::operator= (C_mat
         //throw "dimension matrix must agree";
     }
 
-    if(myThread!=NULL && NB_JOB>1)
+    for(unsigned short i=0 ; i<this->m_L ; i++)
     {
-        double** output = this->m_A;
-        double** input = c.m_A;
-        intCouple idx;
-        long int _Nl=m_L, _Nc=m_C;
-        std::vector< std::future<void> > results;
-        for(int i = 0; i < NB_JOB; ++i) 
+        for(unsigned short j=0 ; j<this->m_C ; j++)
         {
-            //determine on which segment the operation will be run
-            idx = threadInterval(i);
-            //tell thread to work
-            results.emplace_back(
-                (*myThread).enqueue([idx, _Nl, _Nc, input, output] {//
-                    threadOperations tool;
-                    tool.assignMatrix(idx.i1, idx.i2, _Nl, _Nc, input, output);
-                    return;
-                })
-            );
-        }
-        for(auto && result: results)
-        {
-            result.get();
-        } 
-    }
-    else
-    {
-        for(long int i=0 ; i<this->m_L ; i++)
-        {
-            for(long int j=0 ; j<this->m_C ; j++)
-            {
-                this->m_A[i][j] = c(i,j);
-            }
+            this->m_A[getIndex(i,j)] = c(i,j);
         }
     }
-
-
-    
     return *this;
 }
 
 template<class dataType> C_matrix<dataType> C_matrix<dataType>::operator= (dataType const& x)
 {
-    if(myThread!=NULL && NB_JOB>1)
+    for(unsigned short i=0 ; i<this->m_L ; i++)
     {
-        double** output = this->m_A;
-        intCouple idx;
-        long int _Nl=m_L, _Nc=m_C;
-        std::vector< std::future<void> > results;
-        for(int i = 0; i < NB_JOB; ++i) 
+        for(unsigned short j=0 ; j<this->m_C ; j++)
         {
-            //determine on which segment the operation will be run
-            idx = threadInterval(i);
-            //tell thread to work
-            results.emplace_back(
-                (*myThread).enqueue([idx, _Nl, _Nc, x, output] {
-                    threadOperations tool;
-                    tool.assignMatrix(idx.i1, idx.i2, _Nl, _Nc, x, output);
-                    return;
-                })
-            );
-        }
-        for(auto && result: results) result.get();
-
-    }
-    else
-    {
-        for(long int i=0 ; i<this->m_L ; i++)
-        {
-            for(long int j=0 ; j<this->m_C ; j++)
-            {
-                m_A[i][j] = x;
-            }
+            m_A[getIndex(i,j)] = x;
         }
     }
-    
 
     return *this;
 }
@@ -525,85 +442,27 @@ template<class dataType> C_matrix<dataType> C_matrix<dataType>::operator= (dataT
 template<class dataType> C_matrix<dataType> C_matrix<dataType>::operator+ (C_matrix const& c)
 {
     if(c.getNbColumn()!=this->getNbColumn() || c.getNbRow()!=this->getNbRow()) throw "dimension matrix must agree";
-    C_matrix<dataType> B(m_L,m_C,myThread,NB_JOB);
-
-    if(myThread!=NULL && NB_JOB>1)
+    C_matrix<dataType> B(m_L,m_C);
+    for(unsigned short i=0 ; i<m_L ; i++)
     {
-        //must be multithreaded
-        double** input1 = this->m_A;
-        intCouple idx;
-        long int _Nl=m_L, _Nc=m_C;
-        double** output = B.m_A;
-        double** input2 = c.m_A;
-        std::vector< std::future<void> > results;
-        for(int i = 0; i < NB_JOB; ++i) 
+        for(unsigned short j=0 ; j<m_C ; j++)
         {
-            //determine on which segment the operation will be run
-            idx = threadInterval(i);
-            //tell thread to work
-            results.emplace_back(
-                (*myThread).enqueue( [idx, _Nl, _Nc, input1, input2, output] {
-                    threadOperations tool;
-                    tool.addMatrix(idx.i1, idx.i2, _Nl, _Nc, input1, input2, output);
-                    return;
-                })
-            );
-        }
-        for(auto && result: results) result.get();
-    }
-    else
-    {
-        for(long int i=0 ; i<m_L ; i++)
-        {
-            for(long int j=0 ; j<m_C ; j++)
-            {
-                B(i,j) = m_A[i][j] + c(i,j);
-            }
+            B(i,j) = m_A[getIndex(i,j)] + c(i,j);
         }
     }
-    
     return B;
 }
 
 template<class dataType> C_matrix<dataType> C_matrix<dataType>::operator+ (dataType const& x)
 {
-    C_matrix<dataType> B(m_L,m_C,myThread,NB_JOB);
-
-    if(myThread!=NULL && NB_JOB>1)
+    C_matrix<dataType> B(m_L,m_C);
+    for(unsigned short i=0 ; i<this->m_L ; i++)
     {
-        double** input = this->m_A;
-        double** output = B.m_A;
-        intCouple idx;
-        long int _Nl=m_L, _Nc=m_C;
-        std::vector< std::future<void> > results;
-        for(int i = 0; i < NB_JOB; ++i) 
+        for(unsigned short j=0 ; j<this->m_C ; j++)
         {
-            //determine on which segment the operation will be run
-            idx = threadInterval(i);
-            //tell thread to work
-            results.emplace_back(
-                (*myThread).enqueue([idx, _Nl, _Nc, x, input, output] {
-                    threadOperations tool;
-                    tool.addMatrix(idx.i1, idx.i2, _Nl, _Nc, x, input, output);
-                    return;
-                })
-            );
-        }
-        for(auto && result: results) result.get();
-
-    }
-    else
-    {
-        for(long int i=0 ; i<this->m_L ; i++)
-        {
-            for(long int j=0 ; j<this->m_C ; j++)
-            {
-                B(i,j) = m_A[i][j] + x;
-            }
+            B(i,j) = m_A[getIndex(i,j)] + x;
         }
     }
-
-    
 
     return B;
 }
@@ -611,50 +470,29 @@ template<class dataType> C_matrix<dataType> C_matrix<dataType>::operator+ (dataT
 template<class dataType> C_matrix<dataType> C_matrix<dataType>::operator- (C_matrix const& c)
 {
     if(c.getNbColumn()!=this->getNbColumn() || c.getNbRow()!=this->getNbRow()) throw "dimension matrix must agree";
-    C_matrix<dataType> B(m_L,m_C,myThread,NB_JOB);
-
-    if(myThread!=NULL && NB_JOB>1)
+    C_matrix<dataType> B(m_L,m_C);// = new C_matrix(m_L,m_C);
+    for(unsigned short i=0 ; i<m_L ; i++)
     {
-        //must be multithreaded
-        double** input1 = this->m_A;
-        intCouple idx;
-        long int _Nl=m_L, _Nc=m_C;
-        double** output = B.m_A;
-        double** input2 = c.m_A;
-        std::vector< std::future<void> > results;
-        for(int i = 0; i < NB_JOB; ++i) 
+        for(unsigned short j=0 ; j<m_C ; j++)
         {
-            //determine on which segment the operation will be run
-            idx = threadInterval(i);
-            //tell thread to work
-            results.emplace_back(
-                (*myThread).enqueue( [idx, _Nl, _Nc, input1, input2, output] {
-                    threadOperations tool;
-                    tool.subMatrix(idx.i1, idx.i2, _Nl, _Nc, input1, input2, output);
-                    return;
-                })
-            );
-        }
-        for(auto && result: results) result.get();
-    }
-    else
-    {
-        for(long int i=0 ; i<m_L ; i++)
-        {
-            for(long int j=0 ; j<m_C ; j++)
-            {
-                B(i,j) = m_A[i][j] - c(i,j);
-            }
+            B(i,j) = m_A[getIndex(i,j)] - c(i,j);
         }
     }
-    
     return B;
 }
 
 template<class dataType> C_matrix<dataType> C_matrix<dataType>::operator- (dataType const& x)
 {
-    dataType xx = -x;
-    return ((*this)+xx);
+    C_matrix<dataType> B(m_L,m_C);// = new C_matrix
+    for(unsigned short i=0 ; i<this->m_L ; i++)
+    {
+        for(unsigned short j=0 ; j<this->m_C ; j++)
+        {
+            B(i,j) = m_A[getIndex(i,j)] - x;
+        }
+    }
+
+    return B;
 }
 
 
@@ -663,14 +501,14 @@ template<class dataType> C_matrix<dataType> C_matrix<dataType>::operator* (C_mat
     if(m_C!=c.getNbRow()) throw "mismatch dimension matrix";
 
     C_matrix B(m_L,c.getNbColumn());
-    for(long int i=0 ; i<m_L ; i++)
+    for(unsigned short i=0 ; i<m_L ; i++)
     {
-        for(long int j=0 ; j<c.getNbColumn() ; j++)
+        for(unsigned short j=0 ; j<c.getNbColumn() ; j++)
         {
             dataType S = (dataType) 0;
-            for(long int k=0 ; k<m_C ; k++)
+            for(unsigned short k=0 ; k<m_C ; k++)
             {
-                S += m_A[i][k]*c(k,j);
+                S += m_A[getIndex(i,j)]*c(k,j);
             }
             B(i,j) = S;
         }
@@ -682,11 +520,11 @@ template<class dataType> C_matrix<dataType> C_matrix<dataType>::operator* (C_mat
 template<class dataType> C_matrix<dataType> C_matrix<dataType>::operator* (const dataType& x)
 {
     C_matrix B(m_L,m_C);
-    for(long int i=0 ; i<this->m_L ; i++)
+    for(unsigned short i=0 ; i<this->m_L ; i++)
     {
-        for(long int j=0 ; j<this->m_C ; j++)
+        for(unsigned short j=0 ; j<this->m_C ; j++)
         {
-            B(i,j) = m_A[i][j]*x;
+            B(i,j) = m_A[getIndex(i,j)]*x;
         }
     }
     return B;
@@ -696,11 +534,11 @@ template<class dataType> C_matrix<dataType> C_matrix<dataType>::operator== (C_ma
 {
     if(c.getNbColumn()!=this->getNbColumn() || c.getNbRow()!=this->getNbRow()) throw "dimension matrix must agree";
     C_matrix<dataType> B(m_L,m_C);
-    for(long int i=0 ; i<m_L ; i++)
+    for(unsigned short i=0 ; i<m_L ; i++)
     {
-        for(long int j=0 ; j<m_C ; j++)
+        for(unsigned short j=0 ; j<m_C ; j++)
         {
-            if(m_A[i][j]==c(i,j)) B(i,j)=1.0;
+            if(m_A[getIndex(i,j)]==c(i,j)) B(i,j)=1.0;
             else B(i,j) = 0.0;
         }
     }
@@ -710,11 +548,11 @@ template<class dataType> C_matrix<dataType> C_matrix<dataType>::operator== (C_ma
 template<class dataType> C_matrix<dataType> C_matrix<dataType>::operator== (dataType const& x)
 {
     C_matrix<dataType> B(m_L,m_C);
-    for(long int i=0 ; i<m_L ; i++)
+    for(unsigned short i=0 ; i<m_L ; i++)
     {
-        for(long int j=0 ; j<m_C ; j++)
+        for(unsigned short j=0 ; j<m_C ; j++)
         {
-            if(m_A[i][j]==x) B(i,j)=1.0;
+            if(m_A[getIndex(i,j)]==x) B(i,j)=1.0;
             else B(i,j) = 0.0;
         }
     }
@@ -725,11 +563,11 @@ template<class dataType> C_matrix<dataType> C_matrix<dataType>::operator> (C_mat
 {
     if(c.getNbColumn()!=this->getNbColumn() || c.getNbRow()!=this->getNbRow()) throw "dimension matrix must agree";
     C_matrix<dataType> B(m_L,m_C);
-    for(long int i=0 ; i<m_L ; i++)
+    for(unsigned short i=0 ; i<m_L ; i++)
     {
-        for(long int j=0 ; j<m_C ; j++)
+        for(unsigned short j=0 ; j<m_C ; j++)
         {
-            if(m_A[i][j]>c(i,j)) B(i,j)=1.0;
+            if(m_A[getIndex(i,j)]>c(i,j)) B(i,j)=1.0;
             else B(i,j) = 0.0;
         }
     }
@@ -739,11 +577,11 @@ template<class dataType> C_matrix<dataType> C_matrix<dataType>::operator> (C_mat
 template<class dataType> C_matrix<dataType> C_matrix<dataType>::operator> (dataType const& x)
 {
     C_matrix<dataType> B(m_L,m_C);
-    for(long int i=0 ; i<m_L ; i++)
+    for(unsigned short i=0 ; i<m_L ; i++)
     {
-        for(long int j=0 ; j<m_C ; j++)
+        for(unsigned short j=0 ; j<m_C ; j++)
         {
-            if(m_A[i][j]>x) B(i,j)=1.0;
+            if(m_A[getIndex(i,j)]>x) B(i,j)=1.0;
             else B(i,j) = 0.0;
         }
     }
@@ -754,11 +592,11 @@ template<class dataType> C_matrix<dataType> C_matrix<dataType>::operator>= (C_ma
 {
     if(c.getNbColumn()!=this->getNbColumn() || c.getNbRow()!=this->getNbRow()) throw "dimension matrix must agree";
     C_matrix<dataType> B(m_L,m_C);
-    for(long int i=0 ; i<m_L ; i++)
+    for(unsigned short i=0 ; i<m_L ; i++)
     {
-        for(long int j=0 ; j<m_C ; j++)
+        for(unsigned short j=0 ; j<m_C ; j++)
         {
-            if(m_A[i][j]>=c(i,j)) B(i,j)=1.0;
+            if(m_A[getIndex(i,j)]>=c(i,j)) B(i,j)=1.0;
             else B(i,j) = 0.0;
         }
     }
@@ -768,11 +606,11 @@ template<class dataType> C_matrix<dataType> C_matrix<dataType>::operator>= (C_ma
 template<class dataType> C_matrix<dataType> C_matrix<dataType>::operator>= (dataType const& x)
 {
     C_matrix<dataType> B(m_L,m_C);
-    for(long int i=0 ; i<m_L ; i++)
+    for(unsigned short i=0 ; i<m_L ; i++)
     {
-        for(long int j=0 ; j<m_C ; j++)
+        for(unsigned short j=0 ; j<m_C ; j++)
         {
-            if(m_A[i][j]>=x) B(i,j)=1.0;
+            if(m_A[getIndex(i,j)]>=x) B(i,j)=1.0;
             else B(i,j) = 0.0;
         }
     }
@@ -786,11 +624,11 @@ template<class dataType> C_matrix<dataType> C_matrix<dataType>::operator< (C_mat
 {
     if(c.getNbColumn()!=this->getNbColumn() || c.getNbRow()!=this->getNbRow()) throw "dimension matrix must agree";
     C_matrix<dataType> B(m_L,m_C);
-    for(long int i=0 ; i<m_L ; i++)
+    for(unsigned short i=0 ; i<m_L ; i++)
     {
-        for(long int j=0 ; j<m_C ; j++)
+        for(unsigned short j=0 ; j<m_C ; j++)
         {
-            if(m_A[i][j]<c(i,j)) B(i,j)=1.0;
+            if(m_A[getIndex(i,j)]<c(i,j)) B(i,j)=1.0;
             else B(i,j) = 0.0;
         }
     }
@@ -800,11 +638,11 @@ template<class dataType> C_matrix<dataType> C_matrix<dataType>::operator< (C_mat
 template<class dataType> C_matrix<dataType> C_matrix<dataType>::operator< (dataType const& x)
 {
     C_matrix<dataType> B(m_L,m_C);
-    for(long int i=0 ; i<m_L ; i++)
+    for(unsigned short i=0 ; i<m_L ; i++)
     {
-        for(long int j=0 ; j<m_C ; j++)
+        for(unsigned short j=0 ; j<m_C ; j++)
         {
-            if(m_A[i][j]<x) B(i,j)=1.0;
+            if(m_A[getIndex(i,j)]<x) B(i,j)=1.0;
             else B(i,j) = 0.0;
         }
     }
@@ -815,11 +653,11 @@ template<class dataType> C_matrix<dataType> C_matrix<dataType>::operator<= (C_ma
 {
     if(c.getNbColumn()!=this->getNbColumn() || c.getNbRow()!=this->getNbRow()) throw "dimension matrix must agree";
     C_matrix<dataType> B(m_L,m_C);
-    for(long int i=0 ; i<m_L ; i++)
+    for(unsigned short i=0 ; i<m_L ; i++)
     {
-        for(long int j=0 ; j<m_C ; j++)
+        for(unsigned short j=0 ; j<m_C ; j++)
         {
-            if(m_A[i][j]<=c(i,j)) B(i,j)=1.0;
+            if(m_A[getIndex(i,j)]<=c(i,j)) B(i,j)=1.0;
             else B(i,j) = 0.0;
         }
     }
@@ -829,11 +667,11 @@ template<class dataType> C_matrix<dataType> C_matrix<dataType>::operator<= (C_ma
 template<class dataType> C_matrix<dataType> C_matrix<dataType>::operator<= (dataType const& x)
 {
     C_matrix<dataType> B(m_L,m_C);
-    for(long int i=0 ; i<m_L ; i++)
+    for(unsigned short i=0 ; i<m_L ; i++)
     {
-        for(long int j=0 ; j<m_C ; j++)
+        for(unsigned short j=0 ; j<m_C ; j++)
         {
-            if(m_A[i][j]<=x) B(i,j)=1.0;
+            if(m_A[getIndex(i,j)]<=x) B(i,j)=1.0;
             else B(i,j) = 0.0;
         }
     }
@@ -851,7 +689,7 @@ template<class dataType> dataType& C_matrix<dataType>::operator()(const int l, c
     {
         throw "index must be larger than 0 and smaller than the matrix dimensions";
     }
-    return m_A[l][c];
+    return m_A[getIndex(l,c)];
 }
 template<class dataType> const dataType& C_matrix<dataType>::operator()(const int l, const int c) const
 {
@@ -859,7 +697,7 @@ template<class dataType> const dataType& C_matrix<dataType>::operator()(const in
     {
         throw "index must be larger than 0 and smaller than the matrix dimensions";
     }
-    return m_A[l][c];
+    return m_A[l*m_C+c];//TODO explain why getIndex(l,c) generates an error
 }
 
 template<class dataType> dataType& C_matrix<dataType>::operator()(const long l, const long c)
@@ -868,7 +706,7 @@ template<class dataType> dataType& C_matrix<dataType>::operator()(const long l, 
     {
         throw "index must be larger than 0 and smaller than the matrix dimensions";
     }
-    return m_A[l][c];
+    return m_A[getIndex(l,c)];
 }
 template<class dataType> const dataType& C_matrix<dataType>::operator()(const long l, const long c) const
 {
@@ -876,7 +714,7 @@ template<class dataType> const dataType& C_matrix<dataType>::operator()(const lo
     {
         throw "index must be larger than 0 and smaller than the matrix dimensions";
     }
-    return m_A[l][c];
+    return m_A[getIndex(l,c)];
 }
 
 template<class dataType> dataType& C_matrix<dataType>::operator()(const short l, const short c)
@@ -885,7 +723,7 @@ template<class dataType> dataType& C_matrix<dataType>::operator()(const short l,
     {
         throw "index must be larger than 0 and smaller than the matrix dimensions";
     }
-    return m_A[l][c];
+    return m_A[getIndex(l,c)];
 }
 template<class dataType> const dataType& C_matrix<dataType>::operator()(const short l, const short c) const
 {
@@ -893,7 +731,7 @@ template<class dataType> const dataType& C_matrix<dataType>::operator()(const sh
     {
         throw "index must be larger than 0 and smaller than the matrix dimensions";
     }
-    return m_A[l][c];
+    return m_A[getIndex(l,c)];
 }
 
 template<class dataType> dataType& C_matrix<dataType>::operator()(const unsigned int l, const unsigned int c)
@@ -902,7 +740,7 @@ template<class dataType> dataType& C_matrix<dataType>::operator()(const unsigned
     {
         throw "index must be larger than 0 and smaller than the matrix dimensions";
     }
-    return m_A[l][c];
+    return m_A[getIndex(l,c)];
 }
 template<class dataType> const dataType& C_matrix<dataType>::operator()(const unsigned int l, const unsigned int c) const
 {
@@ -910,7 +748,7 @@ template<class dataType> const dataType& C_matrix<dataType>::operator()(const un
     {
         throw "index must be larger than 0 and smaller than the matrix dimensions";
     }
-    return m_A[l][c];
+    return m_A[getIndex(l,c)];
 }
 template<class dataType> dataType& C_matrix<dataType>::operator()(const unsigned short l, const unsigned short c)
 {
@@ -918,7 +756,7 @@ template<class dataType> dataType& C_matrix<dataType>::operator()(const unsigned
     {
         throw "index must be larger than 0 and smaller than the matrix dimensions";
     }
-    return m_A[l][c];
+    return m_A[getIndex(l,c)];
 }
 template<class dataType> const dataType& C_matrix<dataType>::operator()(const unsigned short l, const unsigned short c) const
 {
@@ -926,7 +764,7 @@ template<class dataType> const dataType& C_matrix<dataType>::operator()(const un
     {
         throw "index must be larger than 0 and smaller than the matrix dimensions";
     }
-    return m_A[l][c];
+    return m_A[l*m_C+c];//WARNING explain why getIndex(l,c) generates an error//
 }
 
 template<class dataType> dataType& C_matrix<dataType>::operator()(const unsigned long l, const unsigned long c)
@@ -935,7 +773,7 @@ template<class dataType> dataType& C_matrix<dataType>::operator()(const unsigned
     {
         throw "index must be larger than 0 and smaller than the matrix dimensions";
     }
-    return m_A[l][c];
+    return m_A[getIndex(l,c)];
 }
 template<class dataType> const dataType& C_matrix<dataType>::operator()(const unsigned long l, const unsigned long c) const
 {
@@ -943,7 +781,7 @@ template<class dataType> const dataType& C_matrix<dataType>::operator()(const un
     {
         throw "index must be larger than 0 and smaller than the matrix dimensions";
     }
-    return m_A[l][c];
+    return m_A[getIndex(l,c)];
 }
 
 template<class dataType> dataType& C_matrix<dataType>::operator()(const float l, const float c)
@@ -954,10 +792,10 @@ template<class dataType> dataType& C_matrix<dataType>::operator()(const float l,
     }
     unsigned int ll = (unsigned int) floor((double) l);
     unsigned int cc = (unsigned int) floor((double) c);
-    return m_A[ll][cc];
+    return m_A[getIndex(ll,cc)];
 
 }
-template<class dataType> const dataType& C_matrix<dataType>::operator()(const float l, const float c, long int INTERPOLATION) const
+template<class dataType> const dataType& C_matrix<dataType>::operator()(const float l, const float c, unsigned short INTERPOLATION) const
 {
     if( (l<0.0) || (l>=(float) (this->m_L)) || (c<0.0) || (c>= (float) (this->m_C)))
     {
@@ -967,7 +805,7 @@ template<class dataType> const dataType& C_matrix<dataType>::operator()(const fl
     {
         unsigned int ll = (unsigned int) floor((double) l);
         unsigned int cc = (unsigned int) floor((double) c);
-        return m_A[ll][cc];
+        return m_A[getIndex(ll,cc)];
     }
     else
     {
@@ -977,23 +815,23 @@ template<class dataType> const dataType& C_matrix<dataType>::operator()(const fl
         //return m_A[ll][cc];
         if(l<SMALL_NUM_F && c<SMALL_NUM_F)
         {
-            return m_A[ll][cc];
+            return m_A[getIndex(ll,cc)];
         }
         if(l<SMALL_NUM_F)//column interpolation
         {
             unsigned int cc1 = cc+1;
-            return (dataType) (((double)m_A[ll][cc])*( ((double)cc1) - ((double)c) ) + ((double)m_A[ll][cc1])*( ((double)c) - ((double)cc) ));
+            return (dataType) (((double)m_A[getIndex(ll,cc)])*( ((double)cc1) - ((double)c) ) + ((double)m_A[getIndex(ll,cc1)])*( ((double)c) - ((double)cc) ));
         }
         if(c<SMALL_NUM_F)//row interpolation
         {
             unsigned int ll1 = ll+1;
-            return (dataType) (((double)m_A[ll][cc])*( ((double)ll1) - ((double)l) ) + ((double)m_A[ll1][cc])*( ((double)l) - ((double)ll) ));
+            return (dataType) (((double)m_A[getIndex(ll,cc)])*( ((double)ll1) - ((double)l) ) + ((double)m_A[getIndex(ll1,cc)])*( ((double)l) - ((double)ll) ));
         }
         //main case: bilinear interpolation
         unsigned int ll1 = ll+1;
         unsigned int cc1 = cc+1;
-        double valuell = (((double)m_A[ll][cc])*( ((double)cc1) - ((double)c) ) + ((double)m_A[ll][cc1])*( ((double)c) - ((double)cc) ));
-        double valuell1 = (((double)m_A[ll1][cc])*( ((double)cc1) - ((double)c) ) + ((double)m_A[ll1][cc1])*( ((double)c) - ((double)cc) ));
+        double valuell = (((double)m_A[getIndex(ll,cc)])*( ((double)cc1) - ((double)c) ) + ((double)m_A[getIndex(ll,cc1)])*( ((double)c) - ((double)cc) ));
+        double valuell1 = (((double)m_A[getIndex(ll1,cc)])*( ((double)cc1) - ((double)c) ) + ((double)m_A[getIndex(ll1,cc1)])*( ((double)c) - ((double)cc) ));
         return (dataType) (valuell*( ((double)ll1) - ((double)l) ) + valuell1*( ((double)l) - ((double)ll) ));
     }
 }
@@ -1006,10 +844,10 @@ template<class dataType> dataType& C_matrix<dataType>::operator()(const double l
     }
     unsigned int ll = (unsigned int) floor(l);
     unsigned int cc = (unsigned int) floor(c);
-    return m_A[ll][cc];
+    return m_A[getIndex(ll,cc)];
 
 }
-template<class dataType> const dataType& C_matrix<dataType>::operator()(const double l, const double c, long int INTERPOLATION) const
+template<class dataType> const dataType& C_matrix<dataType>::operator()(const double l, const double c, unsigned short INTERPOLATION) const
 {
     if( (l<0.0) || (l>=(double) (this->m_L)) || (c<0.0) || (c>= (double) (this->m_C)))
     {
@@ -1019,7 +857,7 @@ template<class dataType> const dataType& C_matrix<dataType>::operator()(const do
     {
         unsigned int ll = (unsigned int) floor(l);
         unsigned int cc = (unsigned int) floor(c);
-        return m_A[ll][cc];
+        return m_A[getIndex(ll,cc)];
     }
     else
     {
@@ -1029,23 +867,23 @@ template<class dataType> const dataType& C_matrix<dataType>::operator()(const do
         //return m_A[ll][cc];
         if(l<SMALL_NUM_F && c<SMALL_NUM_F)
         {
-            return m_A[ll][cc];
+            return m_A[getIndex(ll,cc)];
         }
         if(l<SMALL_NUM_F)//column interpolation
         {
             unsigned int cc1 = cc+1;
-            return (dataType) (((double)m_A[ll][cc])*( ((double)cc1) - c ) + ((double)m_A[ll][cc1])*( c - ((double)cc) ));
+            return (dataType) (((double)m_A[getIndex(ll,cc)])*( ((double)cc1) - c ) + ((double)m_A[getIndex(ll,cc1)])*( c - ((double)cc) ));
         }
         if(c<SMALL_NUM_F)//row interpolation
         {
             unsigned int ll1 = ll+1;
-            return (dataType) (((double)m_A[ll][cc])*( ((double)ll1) - l ) + ((double)m_A[ll1][cc])*( l - ((double)ll) ));
+            return (dataType) (((double)m_A[getIndex(ll,cc)])*( ((double)ll1) - l ) + ((double)m_A[getIndex(ll1,cc)])*( l - ((double)ll) ));
         }
         //main case: bilinear interpolation
         unsigned int ll1 = ll+1;
         unsigned int cc1 = cc+1;
-        double valuell = (((double)m_A[ll][cc])*( ((double)cc1) - c ) + ((double)m_A[ll][cc1])*( c - ((double)cc) ));
-        double valuell1 = (((double)m_A[ll1][cc])*( ((double)cc1) - c ) + ((double)m_A[ll1][cc1])*( c - ((double)cc) ));
+        double valuell = (((double)m_A[getIndex(ll,cc)])*( ((double)cc1) - c ) + ((double)m_A[getIndex(ll,cc1)])*( c - ((double)cc) ));
+        double valuell1 = (((double)m_A[getIndex(ll1,cc)])*( ((double)cc1) - c ) + ((double)m_A[getIndex(ll1,cc1)])*( c - ((double)cc) ));
         return (dataType) (valuell*( ((double)ll1) - l ) + valuell1*( l - ((double)ll) ));
     }
 }
@@ -1061,7 +899,7 @@ template<class dataType> C_matrix<dataType> C_matrix<dataType>::subset(int lbegi
     {
         for(int c=0 ; c<cend-cbegin+1 ; c++)
         {
-            B(l,c) = m_A[lbegin+l][cbegin+c];
+            B(l,c) = m_A[getIndex(lbegin+l,cbegin+c)];
         }
     }
     return B;
@@ -1077,7 +915,7 @@ template<class dataType> void C_matrix<dataType>::subset(C_matrix<dataType> M, i
     {
         for(int c=0 ; c<M.getNbColumn() ; c++)
         {
-            m_A[lbegin+l][cbegin+c] = M(l,c);
+            m_A[getIndex(lbegin+l,cbegin+c)] = M(l,c);
         }
     }
     return;
@@ -1086,9 +924,9 @@ template<class dataType> void C_matrix<dataType>::subset(C_matrix<dataType> M, i
 template<class dataType> C_matrix<dataType> C_matrix<dataType>::m_abs(void)
 {
     C_matrix<dataType> B(this->m_L,this->m_C);// = new C_matrix
-    for(long int i=0 ; i<this->m_L ; i++)
+    for(unsigned short i=0 ; i<this->m_L ; i++)
     {
-        for(long int j=0 ; j<this->m_C ; j++)
+        for(unsigned short j=0 ; j<this->m_C ; j++)
         {
             B(i,j) = ABS(m_A[i][j]);
         }
@@ -1099,11 +937,11 @@ template<class dataType> C_matrix<dataType> C_matrix<dataType>::m_abs(void)
 template<class dataType> C_matrix<dataType> C_matrix<dataType>::SQRT(void)
 {
     C_matrix<dataType> B(m_L,m_C);
-    for(long int i=0 ; i<m_L ; i++)
+    for(unsigned short i=0 ; i<m_L ; i++)
     {
-        for(long int j=0 ; j<m_C ; j++)
+        for(unsigned short j=0 ; j<m_C ; j++)
         {
-            B(i,j) = sqrt(m_A[i][j]);
+            B(i,j) = sqrt(m_A[getIndex(i,j)]);
         }
     }
     return B;
@@ -1114,9 +952,9 @@ template<class dataType> C_matrix<double> C_matrix<dataType>::bwdistEuclidean(vo
     C_matrix<double> B(m_L,m_C), B2(m_L,m_C), B3(m_L,m_C), B4(m_L,m_C);
     C_matrix<double> dL(m_L,m_C), dC(m_L,m_C), dL2(m_L,m_C), dC2(m_L,m_C), dL3(m_L,m_C), dC3(m_L,m_C), dL4(m_L,m_C), dC4(m_L,m_C);
     double BIGNUM = ((double)m_L)*((double)m_C);
-    for(long int i=0 ; i<m_L ; i++)
+    for(unsigned short i=0 ; i<m_L ; i++)
     {
-        for(long int j=0 ; j<m_C ; j++)
+        for(unsigned short j=0 ; j<m_C ; j++)
         {
             if(ABS(m_A[i][j])<SMALL_NUM_F)//if not in the ocean
             {
@@ -1136,9 +974,9 @@ template<class dataType> C_matrix<double> C_matrix<dataType>::bwdistEuclidean(vo
     double v, vi, vj;
     bool firstIslandMet=false;
     //first sweep
-    for(long int i=0 ; i<m_L ; i++)
+    for(unsigned short i=0 ; i<m_L ; i++)
     {
-        for(long int j=0 ; j<m_C ; j++)
+        for(unsigned short j=0 ; j<m_C ; j++)
         {
             if(!firstIslandMet && B(i,j)<BIGNUM)
             {
@@ -1147,10 +985,10 @@ template<class dataType> C_matrix<double> C_matrix<dataType>::bwdistEuclidean(vo
             if(B(i,j)>SMALL_NUM_F && firstIslandMet)
             {
                 v = SQR(dL(i,j))+SQR(dC(i,j));
-                if(i>0) vi = SQR(dL((long int)(i-1),j)-1.0)+SQR(dC((long int)(i-1),j));
+                if(i>0) vi = SQR(dL((unsigned short)(i-1),j)-1.0)+SQR(dC((unsigned short)(i-1),j));
                 else vi = BIGNUM;
 
-                if(j>0) vj = SQR(dL(i,(long int)(j-1)))+SQR(dC(i,(long int)(j-1))-1.0);
+                if(j>0) vj = SQR(dL(i,(unsigned short)(j-1)))+SQR(dC(i,(unsigned short)(j-1))-1.0);
                 else vj = BIGNUM;
 
                 if(v<vj && v<vi)
@@ -1161,16 +999,16 @@ template<class dataType> C_matrix<double> C_matrix<dataType>::bwdistEuclidean(vo
                 {
                     if(i>0)
                     {
-                        dL(i,j) = dL((long int)(i-1),j)-1.0;
-                        dC(i,j) = dC((long int)(i-1),j);
+                        dL(i,j) = dL((unsigned short)(i-1),j)-1.0;
+                        dC(i,j) = dC((unsigned short)(i-1),j);
                         if(B(i,j)>sqrt(vi)) B(i,j) = sqrt(vi);
                     }
                 }else
                 {
                     if(j>0)
                     {
-                        dL(i,j) = dL(i,(long int)(j-1));
-                        dC(i,j) = dC(i,(long int)(j-1))-1.0;
+                        dL(i,j) = dL(i,(unsigned short)(j-1));
+                        dC(i,j) = dC(i,(unsigned short)(j-1))-1.0;
                         if(B(i,j)>sqrt(vj)) B(i,j) = sqrt(vj);
                     }
                 }
@@ -1287,7 +1125,7 @@ template<class dataType> C_matrix<double> C_matrix<dataType>::bwdistEuclidean(vo
 
     //fourth sweep
     firstIslandMet=false;
-    std::cout << (long int)(m_L-1) << " " << (long int)(m_C-1) << std::endl;
+    std::cout << (unsigned short)(m_L-1) << " " << (unsigned short)(m_C-1) << std::endl;
     for(long i=0 ; i<m_L ; i++)
     {
         for(long j=(long)(m_C-1) ; j>=0 ; j--)
@@ -1344,11 +1182,11 @@ template<class dataType> C_matrix<double> C_matrix<dataType>::bwdistEuclidean(vo
 template<class dataType> C_matrix<dataType> C_matrix<dataType>::dotPower(double alpha)
 {
     C_matrix<dataType> B(m_L,m_C);
-    for(long int i=0 ; i<m_L ; i++)
+    for(unsigned short i=0 ; i<m_L ; i++)
     {
-        for(long int j=0 ; j<m_C ; j++)
+        for(unsigned short j=0 ; j<m_C ; j++)
         {
-            B(i,j) = (dataType) pow((double) m_A[i][j], alpha);
+            B(i,j) = (dataType) pow((double) m_A[getIndex(i,j)], alpha);
         }
     }
     return B;
@@ -1356,11 +1194,11 @@ template<class dataType> C_matrix<dataType> C_matrix<dataType>::dotPower(double 
 template<class dataType> C_matrix<dataType> C_matrix<dataType>::dotExp(double alpha)
 {
     C_matrix<dataType> B(m_L,m_C);
-    for(long int i=0 ; i<m_L ; i++)
+    for(unsigned short i=0 ; i<m_L ; i++)
     {
-        for(long int j=0 ; j<m_C ; j++)
+        for(unsigned short j=0 ; j<m_C ; j++)
         {
-            B(i,j) = (dataType) exp(alpha*(double) m_A[i][j]);
+            B(i,j) = (dataType) exp(alpha*(double) m_A[getIndex(i,j)]);
         }
     }
     return B;
@@ -1369,11 +1207,11 @@ template<class dataType> C_matrix<dataType> C_matrix<dataType>::dotExp(double al
 template<class dataType> C_matrix<dataType> C_matrix<dataType>::dotLog(double alpha)
 {
     C_matrix<dataType> B(m_L,m_C);
-    for(long int i=0 ; i<m_L ; i++)
+    for(unsigned short i=0 ; i<m_L ; i++)
     {
-        for(long int j=0 ; j<m_C ; j++)
+        for(unsigned short j=0 ; j<m_C ; j++)
         {
-            B(i,j) = (dataType) log(alpha*(double) m_A[i][j]);
+            B(i,j) = (dataType) log(alpha*(double) m_A[getIndex(i,j)]);
         }
     }
     return B;
@@ -1381,12 +1219,12 @@ template<class dataType> C_matrix<dataType> C_matrix<dataType>::dotLog(double al
 
 template<class dataType> dataType C_matrix<dataType>::maxVal(void)
 {
-    dataType B = m_A[0][0];
-    for(long int i=0 ; i<m_L ; i++)
+    dataType B = m_A[0];
+    for(unsigned short i=0 ; i<m_L ; i++)
     {
-        for(long int j=0 ; j<m_C ; j++)
+        for(unsigned short j=0 ; j<m_C ; j++)
         {
-            if(B<m_A[i][j]) B = m_A[i][j];
+            if(B<m_A[getIndex(i,j)]) B = m_A[getIndex(i,j)];
         }
     }
     return B;
@@ -1394,12 +1232,12 @@ template<class dataType> dataType C_matrix<dataType>::maxVal(void)
 
 template<class dataType> dataType C_matrix<dataType>::minVal(void)
 {
-    dataType B = m_A[0][0];
-    for(long int i=0 ; i<m_L ; i++)
+    dataType B = m_A[0];
+    for(unsigned short i=0 ; i<m_L ; i++)
     {
-        for(long int j=0 ; j<m_C ; j++)
+        for(unsigned short j=0 ; j<m_C ; j++)
         {
-            if(B>m_A[i][j]) B = m_A[i][j];
+            if(B>m_A[getIndex(i,j)]) B = m_A[getIndex(i,j)];
         }
     }
     return B;
@@ -1408,11 +1246,11 @@ template<class dataType> dataType C_matrix<dataType>::minVal(void)
 template<class dataType>double C_matrix<dataType>::sum(void)
 {
     double B = 0.0;
-    for(long int i=0 ; i<m_L ; i++)
+    for(unsigned short i=0 ; i<m_L ; i++)
     {
-        for(long int j=0 ; j<m_C ; j++)
+        for(unsigned short j=0 ; j<m_C ; j++)
         {
-            B += (double) m_A[i][j];
+            B += (double) m_A[getIndex(i,j)];
         }
     }
     return B;
@@ -1426,11 +1264,11 @@ template<class dataType>double C_matrix<dataType>::mean(void)
 template<class dataType>double C_matrix<dataType>::var(void)
 {
     double B = mean(), V=0.0;
-    for(long int i=0 ; i<m_L ; i++)
+    for(unsigned short i=0 ; i<m_L ; i++)
     {
-        for(long int j=0 ; j<m_C ; j++)
+        for(unsigned short j=0 ; j<m_C ; j++)
         {
-            V += SQR(((double) m_A[i][j]) - B);
+            V += SQR(((double) m_A[getIndex(i,j)]) - B);
         }
     }
     return V/(((double)m_L)*((double)m_C) - 1.0);
@@ -1439,11 +1277,11 @@ template<class dataType>double C_matrix<dataType>::var(void)
 template<class dataType> C_matrix<dataType> C_matrix<dataType>::Transpose(void)
 {
     C_matrix<dataType> B(this->m_C,this->m_L);
-    for(long int i=0 ; i<this->m_L ; i++)
+    for(unsigned short i=0 ; i<this->m_L ; i++)
     {
-        for(long int j=0 ; j<this->m_C ; j++)
+        for(unsigned short j=0 ; j<this->m_C ; j++)
         {
-            B(j,i) = m_A[i][j];
+            B(j,i) = m_A[getIndex(i,j)];
         }
     }
     return B;
@@ -1453,11 +1291,11 @@ template<class dataType> C_matrix<dataType> C_matrix<dataType>::dotProduct(C_mat
 {
     if(this->getNbRow()!=B.getNbRow() || this->getNbColumn()!=B.getNbColumn()) throw "mismatch dimension matrix";
     C_matrix C(m_L,m_C);
-    for(long int i=0 ; i<C.getNbRow() ; i++)
+    for(unsigned short i=0 ; i<C.getNbRow() ; i++)
     {
-        for(long int j=0 ; j<C.getNbColumn() ; j++)
+        for(unsigned short j=0 ; j<C.getNbColumn() ; j++)
         {
-            C(i,j) = m_A[i][j]*B(i,j);
+            C(i,j) = m_A[getIndex(i,j)]*B(i,j);
         }
     }
     return C;
@@ -1467,11 +1305,11 @@ template<class dataType> C_matrix<dataType> C_matrix<dataType>::dotProduct(C_mat
 {
     if(this->getNbRow()!=B.getNbRow() || this->getNbColumn()!=B.getNbColumn()) throw "mismatch dimension matrix";
     C_matrix C(m_L,m_C);
-    for(long int i=0 ; i<C.getNbRow() ; i++)
+    for(unsigned short i=0 ; i<C.getNbRow() ; i++)
     {
-        for(long int j=0 ; j<C.getNbColumn() ; j++)
+        for(unsigned short j=0 ; j<C.getNbColumn() ; j++)
         {
-            C(i,j) = (m_A[i][j])*(B(i,j));
+            C(i,j) = (m_A[getIndex(i,j)])*(B(i,j));
         }
     }
     return C;
@@ -1481,11 +1319,11 @@ template<class dataType> C_matrix<dataType> C_matrix<dataType>::dotDiv(C_matrix 
 {
     if(this->getNbRow()!=B.getNbRow() || this->getNbColumn()!=B.getNbColumn()) throw "mismatch dimension matrix";
     C_matrix<dataType> C(m_L,m_C);
-    for(long int i=0 ; i<C.getNbRow() ; i++)
+    for(unsigned short i=0 ; i<C.getNbRow() ; i++)
     {
-        for(long int j=0 ; j<C.getNbColumn() ; j++)
+        for(unsigned short j=0 ; j<C.getNbColumn() ; j++)
         {
-            C(i,j) = m_A[i][j]/(B(i,j));
+            C(i,j) = m_A[getIndex(i,j)]/(B(i,j));
         }
     }
     return C;
@@ -1495,11 +1333,11 @@ template<class dataType> C_matrix<dataType> C_matrix<dataType>::dotDiv(C_matrix&
 {
     if(this->getNbRow()!=B.getNbRow() || this->getNbColumn()!=B.getNbColumn()) throw "mismatch dimension matrix";
     C_matrix C(m_L,m_C);
-    for(long int i=0 ; i<C.getNbRow() ; i++)
+    for(unsigned short i=0 ; i<C.getNbRow() ; i++)
     {
-        for(long int j=0 ; j<C.getNbColumn() ; j++)
+        for(unsigned short j=0 ; j<C.getNbColumn() ; j++)
         {
-            C(i,j) = (m_A[i][j])/(B(i,j));
+            C(i,j) = (m_A[getIndex(i,j)])/(B(i,j));
         }
     }
     return C;
@@ -1530,7 +1368,7 @@ template<class dataType> C_matrix<dataType> C_matrix<dataType>::conv2(C_matrix<d
                 {
                     if((i+K)>=ih && (j+L)>=jh && (i-ih+K)<m_L && (j-jh+L)<m_C) //check image boundaries
                     {
-                        tmp(i,j) += m_A[i-ih+K][j-jh+L]*h(ih,jh);
+                        tmp(i,j) += m_A[getIndex(i-ih+K,j-jh+L)]*h(ih,jh);
                     }
                 }
             }
@@ -1565,7 +1403,7 @@ template<class dataType> C_matrix<dataType> C_matrix<dataType>::conv2(C_matrix<d
                     if((i+K)>=ih && (j+L)>=jh && (i-ih+K)<m_L && (j-jh+L)<m_C) //check image boundaries
                     {
                         //std::cout << "doing the job " << i << " " << j << " " << ih << " " << jh << std::endl;
-                        tmp(i,j) += m_A[i-ih+K][j-jh+L]*h(ih,jh);
+                        tmp(i,j) += m_A[getIndex(i-ih+K,j-jh+L)]*h(ih,jh);
                     }
                 }
             }
@@ -1586,13 +1424,13 @@ template<class dataType> C_matrix<dataType> C_matrix<dataType>::gradX(void)
     {
         for(unsigned long j=1 ; j<m_C-1 ; j++)
         {
-            tmp(i,j) = 0.5*(m_A[i][j+1]-m_A[i][j-1]);
+            tmp(i,j) = 0.5*(m_A[getIndex(i,j+1)]-m_A[getIndex(i,j-1)]);
         }
     }
     for(unsigned long i=0 ; i<m_L ; i++)
     {
-        tmp(i,(unsigned long)0) = m_A[i][1]-m_A[i][0];
-        tmp(i,(unsigned long)m_C-1) = m_A[i][m_C-1]-m_A[i][m_C-2];
+        tmp(i,(unsigned long)0) = m_A[getIndex(i,1)]-m_A[getIndex(i,0)];
+        tmp(i,(unsigned long)m_C-1) = m_A[getIndex(i,m_C-1)]-m_A[getIndex(i,m_C-2)];
     }
     return tmp;
 }
@@ -1609,13 +1447,13 @@ template<class dataType> C_matrix<dataType> C_matrix<dataType>::gradY(void)
     {
         for(unsigned long j=0 ; j<m_C ; j++)
         {
-            tmp(i,j) = 0.5*(m_A[i+1][j]-m_A[i-1][j]);
+            tmp(i,j) = 0.5*(m_A[getIndex(i+1,j)]-m_A[getIndex(i-1,j)]);
         }
     }
     for(unsigned long i=0 ; i<m_C ; i++)
     {
-        tmp((unsigned long) 0,i) = m_A[1][i]-m_A[0][i];
-        tmp((unsigned long) m_L-1,i) = m_A[m_L-1][i]-m_A[m_L-2][i];
+        tmp((unsigned long) 0,i) = m_A[getIndex(1,i)]-m_A[getIndex(0,1)];
+        tmp((unsigned long) m_L-1,i) = m_A[getIndex(m_L-1,i)]-m_A[getIndex(m_L-2,i)];
     }
     return tmp;
 }
@@ -1628,7 +1466,7 @@ template<class dataType> void C_matrix<dataType>::random(void)
     {
         for(unsigned long j=0 ; j<m_C ; j++)
         {
-            m_A[i][j] = (dataType) rand();
+            m_A[getIndex(i,j)] = (dataType) rand();
         }
     }
     return;
@@ -1641,7 +1479,7 @@ template<class dataType> void C_matrix<dataType>::randomf(void)
     {
         for(unsigned long j=0 ; j<m_C ; j++)
         {
-            m_A[i][j] = (dataType) (((double) rand())/((double) RAND_MAX));
+            m_A[getIndex(i,j)] = (dataType) (((double) rand())/((double) RAND_MAX));
         }
     }
     return;
@@ -1657,7 +1495,7 @@ template<class dataType> void C_matrix<dataType>::randomGauss(double mu, double 
         {
             u = (((double) rand())/((double) RAND_MAX));
             v = (((double) rand())/((double) RAND_MAX));
-            m_A[i][j] = (dataType) mu + ( sigma * sqrt(-2*log(u)) ) * cos(2*Pi*v);
+            m_A[getIndex(i,j)] = (dataType) mu + ( sigma * sqrt(-2*log(u)) ) * cos(2*Pi*v);
         }
     }
     return;
@@ -1673,7 +1511,7 @@ template<class dataType> void C_matrix<dataType>::randomGauss(std::vector<double
         {
             u = (((double) rand())/((double) RAND_MAX));
             v = (((double) rand())/((double) RAND_MAX));
-            m_A[i][j] = (dataType) mu.at(j) + ( sigma.at(j) * sqrt(-2*log(u)) ) * cos(2*Pi*v);
+            m_A[getIndex(i,j)] = (dataType) mu.at(j) + ( sigma.at(j) * sqrt(-2*log(u)) ) * cos(2*Pi*v);
         }
     }
     return;
@@ -1693,7 +1531,7 @@ template<class dataType> void C_matrix<dataType>::meshRow(dataType minValue, dat
     {
         for(unsigned j=0 ; j<m_L ; j++)
         {
-            m_A[j][i] = (dataType) (((double) minValue) + ((double) j)*delta);
+            m_A[getIndex(j,i)] = (dataType) (((double) minValue) + ((double) j)*delta);
         }
     }
     return;
@@ -1711,7 +1549,7 @@ template<class dataType> void C_matrix<dataType>::meshColumn(dataType minValue, 
     {
         for(unsigned j=0 ; j<m_L ; j++)
         {
-            m_A[j][i] = (dataType) (((double) minValue) + ((double) i)*delta);
+            m_A[getIndex(j,i)] = (dataType) (((double) minValue) + ((double) i)*delta);
         }
     }
     return;
@@ -1808,7 +1646,7 @@ template<class dataType> C_matrix<dataType> C_matrix<dataType>::LU(void)
 //******************************
 //Décomposition LU + Permutation
 //******************************
-template<class dataType> C_matrix<dataType> C_matrix<dataType>::LUP(C_matrix<int> &Indice)
+template<class dataType> C_matrix<dataType> C_matrix<dataType>::LUP(C_vector<int> &Indice)
 {
     C_matrix<dataType> MLUP(*this);
     C_matrix<dataType> tmp(m_L,m_C);
@@ -1825,7 +1663,7 @@ template<class dataType> C_matrix<dataType> C_matrix<dataType>::LUP(C_matrix<int
 
         //Indice contiendra les permutations
         for(int j=0; j<m_C; j++)
-            Indice(j,0) = (dataType) j;
+            Indice.set(j,(dataType) j);
 
         //Pour tous les pivots
         for(int j=0; j<m_C; j++)
@@ -1859,10 +1697,8 @@ template<class dataType> C_matrix<dataType> C_matrix<dataType>::LUP(C_matrix<int
                     MLUP(indmax,jj) = Tmp;
                 }
                 //Mise à jour du tableau Indice (=les perumtations)
-                Indice(j,0) = indmax;
-                Indice(indmax,0) = j;
-                //Indice.set(j,indmax);
-                //Indice.set(indmax,j);
+                Indice.set(j,indmax);
+                Indice.set(indmax,j);
 
                 //Division colonne j par pivot
                 for(int i=j+1; i<m_L; i++)
@@ -1945,33 +1781,33 @@ template<class dataType> C_matrix<dataType> C_matrix<dataType>::LMU(void)
 //**********************************
 //Résolution du système MX=B avec LU
 //**********************************
-template<class dataType> C_matrix<dataType> C_matrix<dataType>::LineAlgEq_LU(C_matrix<dataType> &B)
+template<class dataType> C_vector<dataType> C_matrix<dataType>::LineAlgEq_LU(C_vector<dataType> &B)
 {
 
     C_matrix<dataType> MLU = LU();
-    C_matrix<dataType> X(m_C,0);
-    C_matrix<dataType> Y(m_C,0);
+    C_vector<dataType> X(m_C);
+    C_vector<dataType> Y(m_C);
 
 
     //Solve for LY=B
-    for(long int i=0;i<m_L;i++)
+    for(int i=0;i<m_L;i++)
     {
-        Y(i,0) = B(i,0);
-        for(long int j=0;j<i;j++)
+        Y.set(i,B[i]);
+        for(unsigned short j=0;j<i;j++)
         {
-            Y(i,0) = Y(i,0) - MLU(i,j)*Y(j,0);
+            Y.set(i,Y[i] - MLU((unsigned short)i,j)*Y[j]);
         }
     }
 
     //Solve for UX=Y
     for(int i=m_L-1;i>=0;i--)
     {
-        X(i,0) = Y(i,0);
+        X.set(i, Y[i]);
         for(int j=m_L-1;j>i;j--)
         {
-            X(i,0) = X(i,0) - MLU(i,j)*X(j,0);
+            X.set(i,X[i] - MLU(i,j)*X[j]);
         }
-        X(i,0) = X(i,0)/MLU(i,i);
+        X.set(i,X[i]/MLU(i,i));
     }
     return X;
 }
@@ -2546,67 +2382,4 @@ template<class dataType> void C_matrix<dataType>::eigsrt(C_matrix<dataType> *d, 
         }
     }
 }
-
-// i = l + c*Nl;
-// c = (long int) floor( ((double) i)/((double) _Nl));
-// l = i - c*_Nl;
-template<class dataType> long int C_matrix<dataType>::sub2ind(long int l, long int c)
-{
-    return l + c*m_L;
-}
-template<class dataType> long int C_matrix<dataType>::ind2row(long int idx)
-{
-    long int c = (long int) floor( ((double) idx)/((double) m_L));
-    return idx - c*m_L;
-}
-template<class dataType> long int C_matrix<dataType>::ind2column(long int idx)
-{
-    return (long int) floor( ((double) idx)/((double) m_L));
-}
-template<class dataType> intCouple C_matrix<dataType>::ind2Sub(long int idx)
-{
-    intCouple I;
-    I.i2 = (long int) floor( ((double) idx)/((double) m_L));
-    I.i1 = idx - I.i2*m_L;
-    return I;
-}
-
-
-template<class dataType> long int C_matrix<dataType>::threadIntervalStart(long int i)
-{
-    if(i<1) return 0;
-    if(i>NB_JOB) return (m_L*m_C-1);//it's not a start, but an end
-    return (i*m_L*m_C)/NB_JOB;
-}
-template<class dataType> long int C_matrix<dataType>::threadIntervalEnd(long int i)
-{
-
-    if(i<0) return 0;
-    if(i>=NB_JOB) return (m_L*m_C-1);//it's not a start, but an end
-    return (((i+1)*m_L*m_C)/NB_JOB)-1;
-}
-template<class dataType> intCouple C_matrix<dataType>::threadInterval(long int i)
-{
-    intCouple I;
-    if(i<0)
-    {
-        I.i1 = 0;
-        I.i2 = 0;
-    }
-    else if(i>=NB_JOB)
-    {
-        I.i1 = m_L*m_C -1;
-        I.i2 = m_L*m_C -1;
-    }
-    else //i>=0 && i<NB_JOB
-    {
-        I.i1 = (i*m_L*m_C)/NB_JOB;
-        I.i2 = (((i+1)*m_L*m_C)/NB_JOB)-1;
-    }
-    if(I.i1>I.i2) std::cout << "somthing went wrong..." << std::endl;
-    return I;
-}
-
-
 #endif // C_MATRIX_H
-
